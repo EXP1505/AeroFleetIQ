@@ -1,69 +1,93 @@
-import Image from "next/image";
+"use client";
 
-export default function Home() {
+import * as React from "react";
+import { Activity, AlertTriangle, ClipboardList, PackageX } from "lucide-react";
+import { Card, CardHeader, CardTitle, CardDescription, CardContent } from "@/components/ui/card";
+import { KpiCard } from "@/components/fleet/kpi-card";
+import { FleetGrid } from "@/components/fleet/fleet-grid";
+import { AvailabilityChart } from "@/components/fleet/availability-chart";
+import { PriorityList } from "@/components/fleet/priority-list";
+import { fetchFleet, fetchFleetKpis, fetchAvailabilityForecast, fetchRecommendations } from "@/lib/api";
+import type { Aircraft, AvailabilityPoint, Recommendation } from "@/lib/types";
+import { useLiveAlerts } from "@/context/live-alert-context";
+
+export default function FleetOverviewPage() {
+  const [fleet, setFleet] = React.useState<Aircraft[]>([]);
+  const [kpis, setKpis] = React.useState<{ availability: number; atRisk: number; openRecs: number; stockOutRisk: number } | null>(null);
+  const [forecast, setForecast] = React.useState<AvailabilityPoint[]>([]);
+  const [recs, setRecs] = React.useState<Recommendation[]>([]);
+  const [loading, setLoading] = React.useState(true);
+  const { alerts } = useLiveAlerts();
+
+  React.useEffect(() => {
+    Promise.all([fetchFleet(), fetchFleetKpis(), fetchAvailabilityForecast(), fetchRecommendations()]).then(
+      ([fleetData, kpiData, forecastData, recData]) => {
+        setFleet(fleetData);
+        setKpis(kpiData);
+        setForecast(forecastData);
+        setRecs(recData);
+        setLoading(false);
+      }
+    );
+  }, []);
+
+  // Live alert simulation bumps the "at risk" KPI once the scripted anomaly fires.
+  const atRisk = kpis ? kpis.atRisk + (alerts.length > 0 ? 1 : 0) : 0;
+
+  if (loading || !kpis) {
+    return <div className="text-sm text-muted">Loading fleet telemetry…</div>;
+  }
+
   return (
-    <div className="flex flex-col flex-1 items-center justify-center bg-zinc-50 font-sans dark:bg-black">
-      <main className="flex flex-1 w-full max-w-3xl flex-col items-center justify-between py-32 px-16 bg-white dark:bg-black sm:items-start">
-        <Image
-          className="dark:invert h-5 w-[100px]"
-          src="/next.svg"
-          alt="Next.js logo"
-          width={100}
-          height={20}
-          priority
-        />
-        <div className="flex flex-col items-center gap-6 text-center sm:items-start sm:text-left">
-          <h1 className="max-w-xs text-3xl font-semibold leading-10 tracking-tight text-black dark:text-zinc-50">
-            To get started, edit the{" "}
-            <code className="rounded bg-black/[.06] px-1.5 py-0.5 font-mono text-[0.9em] dark:bg-white/[.08]">
-              page.tsx
-            </code>{" "}
-            file.
-          </h1>
-          <p className="max-w-md text-lg leading-8 text-zinc-600 dark:text-zinc-400">
-            Looking for a starting point or more instructions? Head over to{" "}
-            <a
-              href="https://vercel.com/templates?framework=next.js&utm_source=create-next-app&utm_medium=appdir-template-tw&utm_campaign=create-next-app"
-              className="font-medium text-zinc-950 dark:text-zinc-50"
-            >
-              Templates
-            </a>{" "}
-            or the{" "}
-            <a
-              href="https://nextjs.org/learn?utm_source=create-next-app&utm_medium=appdir-template-tw&utm_campaign=create-next-app"
-              className="font-medium text-zinc-950 dark:text-zinc-50"
-            >
-              Learning
-            </a>{" "}
-            center.
-          </p>
-        </div>
-        <div className="flex flex-col gap-4 text-base font-medium sm:flex-row">
-          <a
-            className="flex h-12 w-full items-center justify-center gap-2 rounded-full bg-foreground px-5 text-background transition-colors hover:bg-[#383838] dark:hover:bg-[#ccc] md:w-[158px]"
-            href="https://vercel.com/new?utm_source=create-next-app&utm_medium=appdir-template-tw&utm_campaign=create-next-app"
-            target="_blank"
-            rel="noopener noreferrer"
-          >
-            <Image
-              className="dark:invert h-[14px] w-4"
-              src="/vercel.svg"
-              alt="Vercel logomark"
-              width={16}
-              height={14}
-            />
-            Deploy Now
-          </a>
-          <a
-            className="flex h-12 w-full items-center justify-center rounded-full border border-solid border-black/[.08] px-5 transition-colors hover:border-transparent hover:bg-black/[.04] dark:border-white/[.145] dark:hover:bg-[#1a1a1a] md:w-[158px]"
-            href="https://nextjs.org/docs?utm_source=create-next-app&utm_medium=appdir-template-tw&utm_campaign=create-next-app"
-            target="_blank"
-            rel="noopener noreferrer"
-          >
-            Documentation
-          </a>
-        </div>
-      </main>
+    <div className="flex flex-col gap-6">
+      <div>
+        <h1 className="text-lg font-semibold">Fleet Overview</h1>
+        <p className="text-sm text-muted">24-aircraft synthetic fleet · health, availability and priorities at a glance</p>
+      </div>
+
+      <div id="demo-kpi-row" className="grid grid-cols-2 lg:grid-cols-4 gap-3">
+        <KpiCard label="Fleet Availability" value={kpis.availability} suffix="%" icon={Activity} tone="healthy" />
+        <KpiCard label="Aircraft at Risk" value={atRisk} icon={AlertTriangle} tone="monitor" sub={alerts.length > 0 ? "+1 from live alert" : undefined} />
+        <KpiCard label="Open Recommendations" value={kpis.openRecs} icon={ClipboardList} tone="default" />
+        <KpiCard label="Spare Stock-Out Risk" value={kpis.stockOutRisk} icon={PackageX} tone="critical" sub="parts at or below min stock" />
+      </div>
+
+      <div className="grid grid-cols-1 lg:grid-cols-3 gap-4">
+        <Card className="lg:col-span-2">
+          <CardHeader>
+            <CardTitle>Fleet Health Grid</CardTitle>
+            <CardDescription>24 aircraft · color-coded by component health status</CardDescription>
+          </CardHeader>
+          <CardContent>
+            <FleetGrid fleet={fleet} />
+            <div className="flex items-center gap-4 mt-4 text-xs text-muted">
+              <span className="flex items-center gap-1.5"><span className="size-2 rounded-full bg-healthy" /> Healthy</span>
+              <span className="flex items-center gap-1.5"><span className="size-2 rounded-full bg-monitor" /> Monitor</span>
+              <span className="flex items-center gap-1.5"><span className="size-2 rounded-full bg-critical" /> Critical</span>
+            </div>
+          </CardContent>
+        </Card>
+
+        <Card>
+          <CardHeader>
+            <CardTitle>Priority List</CardTitle>
+            <CardDescription>Ranked by urgency across the fleet</CardDescription>
+          </CardHeader>
+          <CardContent>
+            <PriorityList recommendations={recs} />
+          </CardContent>
+        </Card>
+      </div>
+
+      <Card>
+        <CardHeader>
+          <CardTitle>30-Day Availability Forecast</CardTitle>
+          <CardDescription>Projected fleet availability based on scheduled maintenance and current degradation trends</CardDescription>
+        </CardHeader>
+        <CardContent>
+          <AvailabilityChart data={forecast} />
+        </CardContent>
+      </Card>
     </div>
   );
 }

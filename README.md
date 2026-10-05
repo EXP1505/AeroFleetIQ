@@ -1,36 +1,52 @@
-This is a [Next.js](https://nextjs.org) project bootstrapped with [`create-next-app`](https://nextjs.org/docs/app/api-reference/cli/create-next-app).
+# AeroFleetIQ
 
-## Getting Started
+Frontend-only demo prototype for **SIH26249 — Air Power: Predictive Maintenance & Fleet Availability** (Team Leviathan).
 
-First, run the development server:
+There is no real backend or ML model. All fleet, sensor, spares, and maintenance data comes from a deterministic, seeded mock data layer in [`src/lib/mock`](src/lib/mock), served through async functions in [`src/lib/api.ts`](src/lib/api.ts) that mimic REST responses (300–600ms simulated latency) so a FastAPI backend could later be dropped in without changing any page code.
+
+## Stack
+
+Next.js (App Router) + TypeScript + Tailwind CSS + shadcn/ui-style primitives + Recharts + Framer Motion + lucide-react.
+
+## Run locally
 
 ```bash
+npm install
 npm run dev
-# or
-yarn dev
-# or
-pnpm dev
-# or
-bun dev
 ```
 
-Open [http://localhost:3000](http://localhost:3000) with your browser to see the result.
+Open [http://localhost:3000](http://localhost:3000).
 
-You can start editing the page by modifying `app/page.tsx`. The page auto-updates as you edit the file.
+## Build
 
-This project uses [`next/font`](https://nextjs.org/docs/app/building-your-application/optimizing/fonts) to automatically optimize and load [Geist](https://vercel.com/font), a new font family for Vercel.
+```bash
+npm run build
+npm run start
+```
 
-## Learn More
+## Deploying
 
-To learn more about Next.js, take a look at the following resources:
+The app is a standard Next.js project and deploys to Vercel with no extra configuration — connect the repo and deploy.
 
-- [Next.js Documentation](https://nextjs.org/docs) - learn about Next.js features and API.
-- [Learn Next.js](https://nextjs.org/learn) - an interactive Next.js tutorial.
+## Pages
 
-You can check out [the Next.js GitHub repository](https://github.com/vercel/next.js) - your feedback and contributions are welcome!
+- **Fleet Overview** (`/`) — KPIs, fleet health heatmap, 30-day availability forecast, priority list
+- **Aircraft Detail** (`/aircraft/[tail]`) — component tree, sensor telemetry, RUL chart, explainability panel
+- **Recommendations** (`/recommendations`) — Inspect/Monitor/Replace actions with approve/defer/override + audit log
+- **Spares & Resources** (`/spares`) — inventory, lead times, technicians, facilities
+- **Decision Engine** (`/decision-engine`) — what-if comparison for the AF-107 hero scenario
+- **Digital Thread** (`/digital-thread`) — sensor → aircraft → component → maintenance → spare → outcome graph
+- **Closed-Loop Learning** (`/learning`) — prediction vs. actual finding feedback, model drift monitor
+- **KPI & Methodology** (`/methodology`) — formulas, tracked KPIs, pipeline architecture, tech stack
 
-## Deploy on Vercel
+## Guided demo
 
-The easiest way to deploy your Next.js app is to use the [Vercel Platform](https://vercel.com/new?utm_medium=default-template&filter=next.js&utm_source=create-next-app&utm_campaign=create-next-app-readme) from the creators of Next.js.
+Click **Start Guided Demo** in the top bar for a ~2.5 minute scripted walkthrough that navigates the hero scenario (AF-107's degrading gearbox bearing) end to end. Keyboard shortcuts while running: `Space` pause/resume, `→` next step, `Esc` exit.
 
-Check out our [Next.js deployment documentation](https://nextjs.org/docs/app/building-your-application/deploying) for more details.
+A scripted "live alert" toast also fires ~20 seconds after each page load to simulate a new anomaly arriving.
+
+## Data story
+
+The hero scenario: **AF-107** has a degrading gearbox bearing (vibration trending up, RUL ≈ 38 cycles ±9), the only spare is at an OEM depot with a 21-day lead time, and the next maintenance window opens in 12 days — a conflict the Decision Engine page walks through with three mitigation options. Three other aircraft (AF-112, AF-119, AF-123) carry similar injected degradation patterns for variety.
+
+All data is synthetic and seeded for reproducibility — the same values appear on every load. No invented accuracy or impact figures are shown; every number on screen is derived from the mock data model.
